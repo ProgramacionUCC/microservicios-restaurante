@@ -1,80 +1,55 @@
 # Plazoleta de Comidas — Microservicios
 
-> Sistema de plazoleta con 4 microservicios desacoplados vía REST. Proyecto académico con Git Flow, roles y reglas de negocio reales.
+Proyecto de plazoleta donde cada parte funciona por separado y se hablan entre sí. La idea es que el sistema crezca sin enredarse.
 
-## Qué hace el sistema
+> Este README cuenta lo que **ya está hecho en el código**. Se va actualizando en cada Historia de Usuario. Para el plan completo ver `CONTEXTO_PROYECTO.md`.
 
-Un cliente hace un pedido a un restaurante, el pedido pasa por estados y se le avisa por SMS con un PIN para retirarlo. Cada microservicio es independiente.
+## Qué hace el proyecto
 
-```
-Cliente → Usuarios (login/roles) → Plazoleta (restaurantes/platos/pedidos) → Trazabilidad (Pendiente → En preparación → Listo → Entregado) → Notificaciones (SMS/PIN)
-```
+Una plazoleta con restaurantes. Un administrador registra a los dueños de los restaurantes, esos dueños luego podrán manejar su local, y más adelante los clientes harán pedidos que pasan por varios estados hasta entregarse. Todo está dividido en 4 piezas pequeñas para que cada una haga solo lo suyo.
 
-## Arquitectura — 4 microservicios
+## Qué hay hecho hasta ahora — HU-01 Crear propietario
 
-| # | Servicio | Qué hace | HU clave |
-|---|----------|----------|----------|
-| 1 | **Usuarios** | Registro, login, bcrypt, roles (Admin/Propietario/Empleado/Cliente) | HU-01 Crear propietario |
-| 2 | **Plazoleta** | Restaurantes, platos, pedidos (un pedido activo por cliente, todo del mismo restaurante) | HU-02 Restaurante, HU-03 Plato, HU-11 Pedido |
-| 3 | **Trazabilidad** | Estados + asignación a empleado + métricas (tiempo, ranking) | Asignarse, cambiar estado, cancelar |
-| 4 | **Notificaciones** | SMS cuando el pedido está Listo + PIN de entrega | Notificar pedido listo |
+### Qué hace
+Permite que el administrador cree la cuenta de un propietario. Es el primer paso, sin esto no se pueden crear restaurantes después.
 
-## Estructura del código (HU-01 actual)
+### Cómo lo hace
+Cuando se quiere guardar un propietario, el sistema hace 4 pasos seguidos:
+
+1. **Revisa que todo esté lleno** — nombre, apellido, documento, celular, fecha de nacimiento, correo y clave no pueden venir vacíos.
+2. **Revisa que todo tenga buen formato** — el correo debe parecer un correo, el celular no puede pasar de 13 caracteres y solo lleva números y + al inicio, el documento solo lleva números y la persona debe ser mayor de 18 años.
+3. **Protege la clave** — no guarda la clave tal cual, la transforma en un código irreconocible que no se puede volver a leer. Así si alguien ve la base de datos no ve las claves reales.
+4. **Lo guarda** — lo deja en una lista en memoria. Más adelante esa lista será una base de datos, pero el resto del código no tendrá que cambiar.
+
+### Para qué se hace así
+Para que el código sea fácil de entender y de probar. Cada paso está separado, si algo falla se sabe exactamente dónde fue. Y para que desde el inicio las claves estén protegidas y los datos estén bien.
+
+## Cómo está organizado el código
 
 ```
 src/
-  Main.java                          → demo del flujo
-  model/Propietario.java             → datos (7 campos + rol PROPIETARIO)
-  repository/PropietarioRepository.java → lista en memoria (solo guarda)
-  service/PropietarioService.java    → valida + encripta con bcrypt
-  org/mindrot/BCrypt.java            → librería
+  Main.java                          → ejemplo de uso, crea un propietario y lo guarda
+  model/Propietario.java             → solo guarda los datos, no hace validaciones
+  service/PropietarioService.java    → el que revisa, protege y manda a guardar
+  repository/PropietarioRepository.java → el cajón donde se guardan
+  org/mindrot/BCrypt.java            → herramienta que protege las claves
 ```
 
-**Flujo limpio en `PropietarioService.java`:**
-```java
-validarObligatorios(p);  // 7 campos llenos
-validarFormato(p);       // email, celular max 13, documento solo numeros, 18+
-encriptarClave(p);       // BCrypt.hashpw -> $2a$10$...
-repository.guardarPropietario(p);
-```
+- **model** es la ficha con los datos.
+- **service** es el que piensa y decide si todo está bien.
+- **repository** es el que solo guarda, no pregunta nada.
 
-## Cómo correrlo
+## Reglas que ya están funcionando
 
-Requisitos: Java 26 (Temurin), PowerShell.
+- No se puede crear un propietario si falta algún dato.
+- El correo debe tener forma de correo.
+- El celular máximo 13 caracteres, solo números y +.
+- El documento solo números.
+- Debe ser mayor de edad.
+- Todo propietario que se crea queda automáticamente con el rol `PROPIETARIO`.
 
-```powershell
-javac -d out src/model/Propietario.java src/repository/PropietarioRepository.java src/service/PropietarioService.java src/org/mindrot/BCrypt.java src/Main.java
-java -cp out Main
-```
+## Estado actual
 
-Salida:
-```
-Propietario{nombre='Carlos', correo='carlos@mail.com', rol='PROPIETARIO'}
-Clave guardada: $2a$10$...
-```
+**HU-01 terminada** en la rama `feature/HU-01-crear-propietario` (pieza de Usuarios). Es la base para lo que sigue.
 
-Probar errores: cambia en `Main.java` el correo a `sin-arroba`, celular a `+57300569832599` (>13), documento a `12A`, o fecha a `2020-01-01` (<18) y vuelve a correr.
-
-## Reglas de negocio (HU-01)
-
-| Regla | Válido | Inválido |
-|-------|--------|----------|
-| 7 campos + bcrypt | todos llenos | `""` → error |
-| Email + celular | `a@mail.com`, `+573005698325` (13) | `sin-arroba`, `+57300569832599` |
-| Documento | `12345678` | `12A` |
-| Rol | automático `PROPIETARIO` | — |
-| Edad | `1990-05-10` | `2020-01-01` → menor |
-
-## Git Flow y commits
-
-Ramas: `main` (estable) / `develop` (integración) / `feature/HU-XX-nombre` / `release/sprint-x` / `hotfix/...`
-
-Formato commit: `tipo(modulo): descripción [HU-xx]` — tipos `feat, fix, docs, test, refactor, chore`
-
-Ejemplo: `feat(usuarios): crear endpoint crear propietario [HU-01]`
-
-Regla: 3 commits/semana en días distintos, todo vía PR a `develop`, nunca directo a `main`.
-
-## Estado
-
-Sprint 1 — HU-01 terminada en `feature/HU-01-crear-propietario` (Microservicio Usuarios). Siguientes: HU-02 restaurante, HU-03 plato.
+**Qué sigue:** HU-02 Crear restaurante, HU-03 Crear plato, y así sucesivamente. Cada historia nueva agregará su parte aquí en este README.
