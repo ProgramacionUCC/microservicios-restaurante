@@ -40,7 +40,7 @@ repository.guardarPropietario(p);
 
 ## Cómo correrlo
 
-Requisitos: Java 17+, PowerShell.
+Requisitos: Java 26 (Temurin), PowerShell.
 
 ```powershell
 javac -d out src/model/Propietario.java src/repository/PropietarioRepository.java src/service/PropietarioService.java src/org/mindrot/BCrypt.java src/Main.java
