@@ -1,34 +1,47 @@
 import model.Propietario;
+import model.Restaurante;
 import repository.PropietarioRepository;
+import repository.RestauranteRepository;
 import service.PropietarioService;
+import service.RestauranteService;
 
 import java.time.LocalDate;
 
-// Prueba simple para ver si todo funciona
+// Demo HU-01 + HU-02 sin tocar Propietario
 public class Main {
     public static void main(String[] args) {
-        // 1. Donde se van a guardar
-        PropietarioRepository repo = new PropietarioRepository();
+        // --- HU-01: crear propietario ---
+        PropietarioRepository propRepo = new PropietarioRepository();
+        PropietarioService propService = new PropietarioService(propRepo);
 
-        // 2. El que revisa y guarda (usa el repo)
-        PropietarioService service = new PropietarioService(repo);
-
-        // 3. Creamos un propietario con datos de ejemplo
         Propietario p1 = new Propietario(
                 "Carlos",
                 "Perez",
                 "12345678",
                 "+573005698325",
-                LocalDate.of(1990, 5, 10), // fecha de nacimiento
+                LocalDate.of(1990, 5, 10),
                 "carlos@mail.com",
-                "abc123" // clave normal, luego se encripta sola
+                "abc123"
+        );
+        propService.registrarPropietario(p1);
+        System.out.println(p1);
+        System.out.println("Clave guardada: " + p1.getClave());
+
+        // --- HU-02: crear restaurante (requiere propietario existente) ---
+        RestauranteRepository restRepo = new RestauranteRepository();
+        RestauranteService restService = new RestauranteService(restRepo, propRepo);
+
+        Restaurante r1 = new Restaurante(
+                "La Plazoleta",
+                "900123456",           // NIT solo números
+                "Cra 1 # 2-3",         // direccion
+                "+573005698325",       // telefono max 13, + opcional
+                "http://logo.com/logo.png",
+                "12345678"             // idPropietario = documento de p1
         );
 
-        // 4. Lo revisa y lo guarda (si algo esta mal, avisa con error)
-        service.registrarPropietario(p1);
-
-        // 5. Lo mostramos
-        System.out.println(p1);
-        System.out.println("Clave guardada: " + p1.getClave()); // ya sale encriptada tipo $2a$10$...
+        restService.crearRestaurante(r1);
+        System.out.println(r1);
+        System.out.println("Restaurantes guardados: " + restRepo.obtenerTodos().size());
     }
 }
