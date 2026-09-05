@@ -4,21 +4,31 @@ import service.PropietarioService;
 
 import java.time.LocalDate;
 
+// Prueba simple para ver si todo funciona
 public class Main {
-    // Aqui empieza el programa.
     public static void main(String[] args) {
-        // Donde se guardan.
+        // 1. Donde se van a guardar
         PropietarioRepository repo = new PropietarioRepository();
-        // El que registra usando el repo.
+
+        // 2. El que revisa y guarda (usa el repo)
         PropietarioService service = new PropietarioService(repo);
 
-        // Un propietario con sus 7 datos.
-        Propietario p1 = new Propietario("Carlos", "Perez", "12345678", "+573005698325", LocalDate.of(1990, 5, 10), "carlos@mail.com", "abc123");
+        // 3. Creamos un propietario con datos de ejemplo
+        Propietario p1 = new Propietario(
+                "Carlos",
+                "Perez",
+                "12345678",
+                "+573005698325",
+                LocalDate.of(1990, 5, 10), // fecha de nacimiento
+                "carlos@mail.com",
+                "abc123" // clave normal, luego se encripta sola
+        );
 
-        // Lo guardamos (ahi se encripta la clave) y lo mostramos.
+        // 4. Lo revisa y lo guarda (si algo esta mal, avisa con error)
         service.registrarPropietario(p1);
+
+        // 5. Lo mostramos
         System.out.println(p1);
-        // Mostramos la clave ya encriptada para comprobar.
-        System.out.println("Clave guardada: " + p1.getClave());
+        System.out.println("Clave guardada: " + p1.getClave()); // ya sale encriptada tipo $2a$10$...
     }
 }

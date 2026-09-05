@@ -48,107 +48,70 @@ Reglas prácticas:
 
 ## 3. Arquitectura basada en microservicios
 
-La solución se desarrollará bajo un enfoque de arquitectura de microservicios, con el objetivo de garantizar escalabilidad, independencia funcional, mantenibilidad y despliegue distribuido.
+> Objetivo: **escalabilidad + independencia + mantenibilidad** con despliegue distribuido y bajo acoplamiento (REST).
 
-El sistema estará organizado en los siguientes microservicios principales:
+### Vista rápida — 4 servicios
 
-### 3.1. Microservicio de Usuarios
+| # | Microservicio | Rol principal | ¿Qué resuelve? |
+|---|---------------|---------------|----------------|
+| 1 | **Usuarios** | Auth & Roles | Login, bcrypt, permisos |
+| 2 | **Plazoleta** | Núcleo del negocio | Restaurantes, platos, pedidos |
+| 3 | **Trazabilidad** | Ciclo de vida del pedido | Estados + métricas |
+| 4 | **Notificaciones** | Comunicación | SMS / PIN pedido listo |
 
-Responsable de la gestión de identidades, autenticación y control de acceso.
+```
+[ Cliente ] → Usuarios (auth) → Plazoleta (pedido) → Trazabilidad (estados) → Notificaciones (SMS)
+```
 
-Responsabilidades:
-- Registro y gestión de usuarios:
-  - Administrador
-  - Propietario
-  - Empleado
-  - Cliente
-- Autenticación de usuarios (login con correo y contraseña).
-- Encriptación de contraseñas mediante bcrypt.
-- Validación de roles y permisos para acceso a los servicios.
-- Autorización de endpoints según el tipo de usuario.
+### 3.1. Microservicio de Usuarios — *Identidad y acceso*
 
-Historias de usuario asociadas:
-- Crear propietario
-- Agregar autenticación al sistema
-- Crear cuenta empleado
-- Crear cuenta cliente
+> Centraliza auth para que todo lo demás esté protegido.
 
-Justificación:
-Centraliza la lógica de acceso, asegurando que todas las operaciones estén protegidas mediante autenticación y autorización.
+| Responsabilidad | Detalle |
+|-----------------|---------|
+| **Gestión de usuarios** | Administrador, Propietario, Empleado, Cliente |
+| **Autenticación** | Login con correo + contraseña |
+| **Seguridad** | Bcrypt + validación de roles + autorización por endpoint |
 
-### 3.2. Microservicio de Plazoleta
+**HU asociadas:** Crear propietario · Agregar autenticación · Crear cuenta empleado · Crear cuenta cliente
 
-Núcleo funcional del sistema, encargado de la gestión de restaurantes, menú y pedidos.
+### 3.2. Microservicio de Plazoleta — *Corazón del negocio*
 
-Responsabilidades:
-- Gestión de restaurantes:
-  - Creación de restaurantes
-  - Asociación con propietarios
-- Gestión de platos:
-  - Crear, modificar, habilitar/deshabilitar platos
-- Consulta de información:
-  - Listado de restaurantes (paginado)
-  - Listado de platos por restaurante (con filtros)
-- Gestión de pedidos:
-  - Creación de pedidos
-  - Validación de reglas de negocio (un pedido activo por cliente, pedidos de un mismo restaurante)
+> Eje central entre clientes, propietarios y empleados.
 
-Historias de usuario asociadas:
-- Crear restaurante
-- Crear plato
-- Modificar plato
-- Habilitar/deshabilitar plato
-- Listar restaurantes
-- Listar platos de un restaurante
-- Realizar pedido
-- Consultar pedidos por estado
+| Dominio | Responsabilidades |
+|---------|-------------------|
+| **Restaurantes** | Creación y asociación con propietario |
+| **Platos** | Crear, modificar, habilitar/deshabilitar |
+| **Consultas** | Listar restaurantes (paginado) · Listar platos por restaurante (filtros) |
+| **Pedidos** | Creación + reglas: un pedido activo por cliente, todo del mismo restaurante |
 
-Justificación:
-Concentra la lógica del negocio principal (plazoleta de comidas), eje central entre clientes, propietarios y empleados.
+**HU asociadas:** Crear restaurante · Crear/modificar/habilitar plato · Listar restaurantes/platos · Realizar pedido · Consultar pedidos por estado
 
-### 3.3. Microservicio de Trazabilidad
+### 3.3. Microservicio de Trazabilidad — *Estados y auditoría*
 
-Responsable de la gestión del ciclo de vida de los pedidos y su seguimiento histórico.
+> Desacopla el seguimiento para auditar y medir sin tocar el pedido.
 
-Responsabilidades:
-- Gestión de estados del pedido:
-  - Pendiente
-  - En preparación
-  - Listo
-  - Entregado
-- Asignación de pedidos a empleados.
-- Registro de cada cambio de estado (logs).
-- Consulta de trazabilidad por parte del cliente.
-- Cálculo de métricas de desempeño:
-  - Tiempo de atención por pedido
-  - Ranking de eficiencia por empleado
+| Responsabilidad | Detalle |
+|-----------------|---------|
+| **Estados** | `Pendiente` → `En preparación` → `Listo` → `Entregado` |
+| **Asignación** | Pedido → Empleado |
+| **Historial** | Log de cada cambio de estado + consulta cliente |
+| **Métricas** | Tiempo de atención por pedido · Ranking eficiencia por empleado |
 
-Historias de usuario asociadas:
-- Asignarse a un pedido
-- Cambiar estado a "en preparación"
-- Marcar pedido como entregado
-- Cancelar pedido
-- Consultar trazabilidad
-- Consultar eficiencia de pedidos
+**HU asociadas:** Asignarse a pedido · Cambiar a "en preparación" · Marcar entregado · Cancelar · Consultar trazabilidad/eficiencia
 
-Justificación:
-Desacopla seguimiento y análisis del pedido, facilitando auditoría, métricas y mejora continua.
+### 3.4. Microservicio de Notificaciones — *Comunicación*
 
-### 3.4. Microservicio de Notificaciones
+> Desacopla el envío para escalar o cambiar proveedor sin afectar el resto.
 
-Encargado de la comunicación con el cliente a través de mensajes SMS u otros medios.
+| Responsabilidad | Detalle |
+|-----------------|---------|
+| **Notificar** | Aviso al cliente (SMS u otro canal) |
+| **Seguridad entrega** | Generación y envío de PIN |
+| **Integración** | Servicio externo de mensajería (real/simulado) · Evento `pedido listo` |
 
-Responsabilidades:
-- Envío de notificaciones al cliente.
-- Generación y envío de PIN de seguridad para la entrega del pedido.
-- Integración con servicios externos de mensajería (simulado o real, según alcance).
-- Soporte a eventos del sistema (ej: pedido listo).
-
-Historias de usuario asociadas:
-- Notificar que el pedido está listo
-
-Justificación:
-Desacopla la comunicación del resto del sistema, permitiendo escalar o integrar servicios externos sin afectar otros componentes.
+**HU asociada:** Notificar que el pedido está listo
 
 ## 4. Relación entre microservicios
 
