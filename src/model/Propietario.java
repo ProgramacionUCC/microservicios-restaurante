@@ -2,17 +2,18 @@ package model;
 
 import java.time.LocalDate;
 
-// HU-01: datos del propietario.
+// Guarda los datos del propietario (solo datos, no valida nada)
 public class Propietario {
     private String nombre;
     private String apellido;
-    private String documentoDeIdentidad;
-    private String celular;
-    private LocalDate fechaNacimiento;
+    private String documentoDeIdentidad; // es String para que no se pierdan ceros como 00123
+    private String celular; // tambien String por el + y los ceros
+    private LocalDate fechaNacimiento; // fecha real, no texto, para calcular edad facil
     private String correo;
-    private String clave;
-    private String rol;
+    private String clave; // al inicio es normal, despues se vuelve encriptada
+    private String rol; // siempre es PROPIETARIO
 
+    // Crea un propietario con sus 7 datos. El rol se pone solo.
     public Propietario(String nombre, String apellido, String documentoDeIdentidad, String celular, LocalDate fechaNacimiento, String correo, String clave) {
         this.nombre = nombre;
         this.apellido = apellido;
@@ -21,11 +22,10 @@ public class Propietario {
         this.fechaNacimiento = fechaNacimiento;
         this.correo = correo;
         this.clave = clave;
-        // todo propietario tiene el rol de PROPIETARIO
-        this.rol = "PROPIETARIO";
+        this.rol = "PROPIETARIO"; // todos los que se crean aqui son propietarios
     }
 
-    // Se necesitan para revisar que no vengan vacios y para encriptar.
+    // Getters para que el service pueda revisarlos
     public String getNombre() {
         return nombre;
     }
@@ -54,11 +54,12 @@ public class Propietario {
         return clave;
     }
 
+    // Solo se usa para cambiar la clave normal por la encriptada
     public void setClave(String clave) {
         this.clave = clave;
     }
 
-    // Siempre es PROPIETARIO.
+    // Siempre devuelve PROPIETARIO
     public String getRol() {
         return rol;
     }

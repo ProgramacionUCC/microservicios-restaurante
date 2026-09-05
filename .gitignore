@@ -35,3 +35,7 @@ agents.md
 
 ### Repaso local - nunca subir a git ###
 repaso.md
+
+### Docs - ignorar todos los md ###
+*.md
+!README.md
