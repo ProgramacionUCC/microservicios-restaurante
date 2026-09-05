@@ -24,14 +24,35 @@ Cuando se quiere guardar un propietario, el sistema hace 4 pasos seguidos:
 ### Para qué se hace así
 Para que el código sea fácil de entender y de probar. Cada paso está separado, si algo falla se sabe exactamente dónde fue. Y para que desde el inicio las claves estén protegidas y los datos estén bien.
 
+## Qué hay hecho hasta ahora — HU-02 Crear restaurante
+
+### Qué hace
+Permite crear un restaurante y asociarlo a un propietario ya existente. Sin un propietario válido no se puede crear el restaurante.
+
+### Cómo lo hace
+Cuando se quiere guardar un restaurante, el sistema hace validaciones en orden en `RestauranteService.java:17`:
+
+1. **Revisa que todo esté lleno** — nombre, NIT, dirección, teléfono, urlLogo e idPropietario son obligatorios.
+2. **Revisa el nombre** — no puede ser solo números (ej: `123` → error, `La Plazoleta` → ok).
+3. **Revisa el NIT** — debe ser solo números.
+4. **Revisa el teléfono** — solo números, puede empezar con `+` y máximo 13 caracteres en total (ej: `+573005698325`).
+5. **Revisa el propietario** — el `idPropietario` debe coincidir con el `documentoDeIdentidad` de un usuario ya guardado con rol `PROPIETARIO` en `PropietarioRepository.java:14`.
+6. **Lo guarda** — si todo pasa, lo deja en una lista en memoria en `RestauranteRepository.java:7`.
+
+### Para qué se hace así
+Para que no se creen restaurantes falsos o sin dueño, y para que el dato del teléfono y NIT siempre tenga formato correcto. Además, al validar contra el repositorio de propietarios se asegura la relación entre las dos piezas (Usuarios y Plazoleta) sin acoplarlas.
+
 ## Cómo está organizado el código
 
 ```
 src/
-  Main.java                          → ejemplo de uso, crea un propietario y lo guarda
-  model/Propietario.java             → solo guarda los datos, no hace validaciones
-  service/PropietarioService.java    → el que revisa, protege y manda a guardar
-  repository/PropietarioRepository.java → el cajón donde se guardan
+  Main.java                          → ejemplo de uso, crea un propietario y luego un restaurante asociado
+  model/Propietario.java             → solo guarda los datos del propietario, no hace validaciones
+  model/Restaurante.java             → solo guarda los datos del restaurante (6 campos)
+  service/PropietarioService.java    → el que revisa, protege y manda a guardar propietarios
+  service/RestauranteService.java    → el que revisa y manda a guardar restaurantes
+  repository/PropietarioRepository.java → el cajón donde se guardan los propietarios
+  repository/RestauranteRepository.java → el cajón donde se guardan los restaurantes
   org/mindrot/BCrypt.java            → herramienta que protege las claves
 ```
 
@@ -41,6 +62,7 @@ src/
 
 ## Reglas que ya están funcionando
 
+### HU-01 Propietario
 - No se puede crear un propietario si falta algún dato.
 - El correo debe tener forma de correo.
 - El celular máximo 13 caracteres, solo números y +.
@@ -48,8 +70,17 @@ src/
 - Debe ser mayor de edad.
 - Todo propietario que se crea queda automáticamente con el rol `PROPIETARIO`.
 
+### HU-02 Restaurante
+- Todos los campos son obligatorios: nombre, NIT, dirección, teléfono, urlLogo e idPropietario.
+- El nombre no puede ser solo números.
+- El NIT debe ser solo numérico.
+- El teléfono máximo 13, solo números y `+` opcional al inicio.
+- El `idPropietario` debe existir en `PropietarioRepository` y tener rol `PROPIETARIO`.
+
 ## Estado actual
 
 **HU-01 terminada** en la rama `feature/HU-01-crear-propietario` (pieza de Usuarios). Es la base para lo que sigue.
 
-**Qué sigue:** HU-02 Crear restaurante, HU-03 Crear plato, y así sucesivamente. Cada historia nueva agregará su parte aquí en este README.
+**HU-02 terminada** en la rama `feature/HU-02-crear-restaurante` (pieza de Plazoleta). Agrega `model/Restaurante.java:1`, `repository/RestauranteRepository.java:1`, `service/RestauranteService.java:17` y ejemplo en `Main.java:11`. No modifica nada de Propietario.
+
+**Qué sigue:** HU-03 Crear plato, y así sucesivamente. Cada historia nueva agregará su parte aquí en este README.
