@@ -11,7 +11,7 @@ public class Propietario {
     private LocalDate fechaNacimiento; // fecha real, no texto, para calcular edad facil
     private String correo;
     private String clave; // al inicio es normal, despues se vuelve encriptada
-    private String rol; // siempre es PROPIETARIO
+    private String rol; // por defecto PROPIETARIO, pero puede ser ADMINISTRADOR para HU-05
 
     // Crea un propietario con sus 7 datos. El rol se pone solo.
     public Propietario(String nombre, String apellido, String documentoDeIdentidad, String celular, LocalDate fechaNacimiento, String correo, String clave) {
@@ -22,7 +22,15 @@ public class Propietario {
         this.fechaNacimiento = fechaNacimiento;
         this.correo = correo;
         this.clave = clave;
-        this.rol = "PROPIETARIO"; // todos los que se crean aqui son propietarios
+        this.rol = "PROPIETARIO"; // todos los que se crean aqui son propietarios por defecto
+    }
+
+    // Constructor para crear usuarios con rol especifico (ADMINISTRADOR, etc.) - HU-05
+    public Propietario(String nombre, String apellido, String documentoDeIdentidad, String celular, LocalDate fechaNacimiento, String correo, String clave, String rol) {
+        this(nombre, apellido, documentoDeIdentidad, celular, fechaNacimiento, correo, clave);
+        if (rol != null && !rol.trim().isEmpty()) {
+            this.rol = rol.toUpperCase();
+        }
     }
 
     // Getters para que el service pueda revisarlos
@@ -59,9 +67,15 @@ public class Propietario {
         this.clave = clave;
     }
 
-    // Siempre devuelve PROPIETARIO
+    // Devuelve el rol (PROPIETARIO, ADMINISTRADOR, etc.)
     public String getRol() {
         return rol;
+    }
+
+    public void setRol(String rol) {
+        if (rol != null && !rol.trim().isEmpty()) {
+            this.rol = rol.toUpperCase();
+        }
     }
 
     @Override
