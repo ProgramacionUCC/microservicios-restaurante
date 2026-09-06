@@ -59,6 +59,24 @@ Cuando se quiere guardar un plato, el sistema hace validaciones en orden en `Pla
 ### Para qué se hace así
 Para que nadie pueda crear platos en un restaurante que no existe o que no le pertenece, y para que el precio nunca quede en cero o negativo. Al usar el NIT como `idRestaurante` en `Plato.java:10` se mantiene la relación simple entre Plazoleta y Restaurante sin acoplar módulos.
 
+## Qué hay hecho hasta ahora — HU-04 Modificar plato
+
+### Qué hace
+Permite que el propietario actualice **solo el precio y la descripción** de un plato que ya existe en su restaurante. Sirve para corregir valores errados o actualizar precios sin tener que borrar y volver a crear el plato.
+
+### Cómo lo hace
+Cuando se quiere modificar un plato, el sistema hace validaciones en orden en `PlatoService.java:50`:
+
+1. **Revisa que nada venga vacío** — nombre del plato, NIT del restaurante, nueva descripción y propietario son obligatorios.
+2. **Revisa el precio** — debe ser entero positivo mayor a 0 (`0` o negativo → error).
+3. **Revisa que el restaurante exista** — busca por NIT con `RestauranteRepository.java:22` `obtenerPorNit`. Si no existe → error.
+4. **Revisa que sea el dueño** — el `idPropietarioAutenticado` debe coincidir con el `idPropietario` del restaurante. Si no es el dueño → error.
+5. **Revisa que el plato exista** — lo busca por nombre + NIT en `PlatoRepository.java:15` `obtenerTodos()`. Si no existe en ese restaurante → error.
+6. **Lo actualiza** — solo hace `setPrecio` y `setDescripcion` en `Plato.java:50`, el resto (nombre, categoría, urlImagen, activo) no se toca.
+
+### Para qué se hace así
+Para que nadie pueda cambiar precios de un restaurante que no le pertenece y para que no se puedan modificar otros campos por error. Al cambiar solo dos setters se respeta el checklist del Trello y se mantiene la regla de negocio simple y segura.
+
 ## Cómo está organizado el código
 
 ```
@@ -104,6 +122,13 @@ src/
 - Solo el propietario dueño del restaurante (`Restaurante.getIdPropietario() == idPropietarioAutenticado`) puede crear platos en él.
 - Todo plato se crea con `activo = true` por defecto.
 
+### HU-04 Modificar plato
+- Solo se pueden modificar **precio y descripción**, los demás campos no se tocan.
+- El precio debe ser entero positivo mayor a 0, la descripción no puede venir vacía.
+- El restaurante debe existir (`obtenerPorNit`) y el plato debe existir en ese restaurante (nombre + NIT).
+- Solo el propietario dueño del restaurante puede modificarlo (`Restaurante.getIdPropietario() == idPropietarioAutenticado`).
+- No se permiten modificar platos de otros restaurantes diferentes al propio.
+
 ## Estado actual
 
 **HU-01 terminada** en la rama `feature/HU-01-crear-propietario` (pieza de Usuarios). Es la base para lo que sigue.
@@ -112,4 +137,6 @@ src/
 
 **HU-03 terminada** en la rama `feature/HU-03-crear-plato` (pieza de Plazoleta). Agrega `model/Plato.java:1`, `repository/PlatoRepository.java:1`, `service/PlatoService.java:19` y corrige `repository/RestauranteRepository.java:22` con `obtenerPorNit` para que `PlatoService` pueda validar existencia y dueño. `Main.java:50` ahora demuestra 1 caso válido y 3 errores esperados (precio inválido, no es dueño, restaurante no existe).
 
-**Qué sigue:** HU-04 y siguientes. Cada historia nueva agregará su parte aquí en este README.
+**HU-04 terminada** en la rama `feature/HU-04-Modificar-plato` (pieza de Plazoleta). Agrega `Plato.java:50` `setPrecio/setDescripcion` y `PlatoService.java:50` `modificarPlato()` con 6 validaciones (vacíos, precio>0, restaurante existe, es dueño, plato existe, solo precio+desc). `Main.java:99` ahora demuestra 1 caso válido y 2 errores esperados (no es dueño, precio inválido). No toca ningún repository.
+
+**Qué sigue:** HU-05 y siguientes. Cada historia nueva agregará su parte aquí en este README.
