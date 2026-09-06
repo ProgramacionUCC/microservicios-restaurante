@@ -1,5 +1,6 @@
 package service;
 
+import model.Propietario;
 import model.Restaurante;
 import repository.PropietarioRepository;
 import repository.RestauranteRepository;
@@ -51,6 +52,17 @@ public class RestauranteService {
 
         // Guardar restaurante en memoria tras pasar todas las validaciones
         restauranteRepository.guardar(restaurante);
+    }
+
+    // Metodo con autenticacion HU-05: solo ADMINISTRADOR puede crear restaurantes
+    public void crearRestaurante(Restaurante restaurante, Propietario usuarioAutenticado) {
+        if (usuarioAutenticado == null) {
+            throw new IllegalArgumentException("Debe estar autenticado para crear restaurante.");
+        }
+        if (!"ADMINISTRADOR".equalsIgnoreCase(usuarioAutenticado.getRol())) {
+            throw new IllegalArgumentException("Solo el administrador puede crear restaurantes.");
+        }
+        crearRestaurante(restaurante);
     }
 
     private boolean esNuloOVacio(String valor) {

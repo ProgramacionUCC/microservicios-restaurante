@@ -5,8 +5,11 @@ import repository.RestauranteRepository;
 import service.PropietarioService;
 import service.RestauranteService;
 import model.Plato;
+import model.Empleado;
 import repository.PlatoRepository;
+import repository.EmpleadoRepository;
 import service.PlatoService;
+import service.EmpleadoService;
 import service.AutenticacionService;
 
 import java.time.LocalDate;
@@ -158,5 +161,76 @@ public class Main {
         } catch (IllegalArgumentException e) {
             System.out.println("Error esperado (intento ilimitado): " + e.getMessage());
         }
+
+        // --- HU-05: validacion de autenticacion por endpoint ---
+        System.out.println("\n--- Pruebas HU-05: Validacion por endpoint ---");
+
+        // Crear admin para probar creacion de propietario/restaurante solo por admin
+        Propietario admin = new Propietario("Admin", "Root", "99999999", "+573000000001", LocalDate.of(1985, 1, 1), "admin@mail.com", "admin123", "ADMINISTRADOR");
+        propService.registrarPropietario(admin);
+        Propietario adminLogueado = authService.iniciarSesion("admin@mail.com", "admin123");
+        Propietario propietarioLogueado = authService.iniciarSesion("carlos@mail.com", "abc123");
+        System.out.println("Admin logueado: " + adminLogueado);
+        System.out.println("Propietario logueado: " + propietarioLogueado);
+
+        // 1. Creacion de propietario solo por ADMINISTRADOR
+        System.out.println("\n[1] Crear propietario solo admin:");
+        Propietario nuevoProp = new Propietario("Ana", "Lopez", "11111111", "+573001112233", LocalDate.of(1995, 6, 15), "ana@mail.com", "clave123");
+        try {
+            propService.registrarPropietario(nuevoProp, adminLogueado);
+            System.out.println("OK: admin creo propietario: " + nuevoProp);
+        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        Propietario otroProp = new Propietario("Luis", "Gomez", "22222222", "+573002223344", LocalDate.of(1992, 3, 10), "luis@mail.com", "clave123");
+        try {
+            propService.registrarPropietario(otroProp, propietarioLogueado);
+        } catch (Exception e) { System.out.println("Error esperado (solo admin crea propietario): " + e.getMessage()); }
+
+        // 2. Creacion de restaurante solo por ADMINISTRADOR
+        System.out.println("\n[2] Crear restaurante solo admin:");
+        Restaurante r2 = new Restaurante("El Buen Sabor", "900999888", "Cra 5 # 10-20", "+573005698326", "http://logo.com/2.png", "12345678");
+        try {
+            restService.crearRestaurante(r2, adminLogueado);
+            System.out.println("OK: admin creo restaurante: " + r2);
+        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        Restaurante r3 = new Restaurante("Fallo Restaurante", "900999889", "Cra 5 # 10-21", "+573005698327", "http://logo.com/3.png", "12345678");
+        try {
+            restService.crearRestaurante(r3, propietarioLogueado);
+        } catch (Exception e) { System.out.println("Error esperado (solo admin crea restaurante): " + e.getMessage()); }
+
+        // 3. Creacion de empleado solo por PROPIETARIO dueño
+        System.out.println("\n[3] Crear empleado solo propietario dueño:");
+        EmpleadoRepository empRepo = new EmpleadoRepository();
+        EmpleadoService empService = new EmpleadoService(empRepo, restRepo);
+        Empleado emp1 = new Empleado("Pedro", "Empleado", "33333333", "+573003334455", LocalDate.of(1998, 7, 20), "pedro@mail.com", "emp123", "900123456");
+        try {
+            empService.crearEmpleado(emp1, propietarioLogueado);
+            System.out.println("OK: propietario creo empleado: " + emp1);
+        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        Empleado emp2 = new Empleado("Fallo", "Empleado", "44444444", "+573004445566", LocalDate.of(1999, 8, 21), "fallo@mail.com", "emp123", "900123456");
+        try {
+            empService.crearEmpleado(emp2, adminLogueado);
+        } catch (Exception e) { System.out.println("Error esperado (solo propietario crea empleado): " + e.getMessage()); }
+        System.out.println("Empleados guardados: " + empRepo.obtenerTodos().size());
+
+        // 4. Creacion/modificacion de plato solo por propietario del restaurante (con objeto autenticado)
+        System.out.println("\n[4] Crear/modificar plato solo propietario dueño (con Propietario autenticado):");
+        Plato platoConAuth = new Plato("Arroz con Pollo", 18000, "Arroz casero", "http://img.com/arroz.png", "Almuerzo", "900123456");
+        try {
+            platoService.crearPlato(platoConAuth, propietarioLogueado);
+            System.out.println("OK: propietario dueño creo plato con auth: " + platoConAuth);
+        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        Plato platoFalloAuth = new Plato("Fallo Plato", 15000, "No debe crear", "http://img.com/fallo.png", "Almuerzo", "900123456");
+        try {
+            platoService.crearPlato(platoFalloAuth, adminLogueado);
+        } catch (Exception e) { System.out.println("Error esperado (admin no es dueño, no crea plato): " + e.getMessage()); }
+        try {
+            platoService.modificarPlato("Bandeja Paisa", "900123456", 30000, "Modificado con auth propietario", propietarioLogueado);
+            System.out.println("OK: propietario modifico plato con auth: " + platoValido);
+        } catch (Exception e) { System.out.println("Error: " + e.getMessage()); }
+        try {
+            platoService.modificarPlato("Bandeja Paisa", "900123456", 31000, "Intento admin", adminLogueado);
+        } catch (Exception e) { System.out.println("Error esperado (admin no modifica plato de otro): " + e.getMessage()); }
+
+        System.out.println("\n--- Fin pruebas HU-05 validacion endpoints ---");
     }
 }

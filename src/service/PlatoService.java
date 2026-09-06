@@ -1,6 +1,7 @@
 package service;
 
 import model.Plato;
+import model.Propietario;
 import model.Restaurante;
 import repository.PlatoRepository;
 import repository.RestauranteRepository;
@@ -15,7 +16,7 @@ public class PlatoService {
         this.restauranteRepository = restauranteRepository;
     }
 
-    // idPropietarioAutenticado simula, por ahora, el usuario que hizo login (hasta que exista HU-05)
+    // Metodo legacy con String (mantiene compatibilidad con pruebas anteriores)
     public void crearPlato(Plato plato, String idPropietarioAutenticado) {
         if (plato == null) throw new IllegalArgumentException("Plato no puede ser nulo");
 
@@ -41,6 +42,28 @@ public class PlatoService {
         }
 
         platoRepository.guardar(plato);
+    }
+
+    // Metodo con autenticacion HU-05: solo propietario del restaurante puede crear platos
+    public void crearPlato(Plato plato, Propietario usuarioAutenticado) {
+        if (usuarioAutenticado == null) {
+            throw new IllegalArgumentException("Debe estar autenticado para crear plato.");
+        }
+        if (!"PROPIETARIO".equalsIgnoreCase(usuarioAutenticado.getRol())) {
+            throw new IllegalArgumentException("Solo el propietario puede crear platos.");
+        }
+        crearPlato(plato, usuarioAutenticado.getDocumentoDeIdentidad());
+    }
+
+    // HU-05: solo propietario del restaurante puede modificar (con objeto autenticado)
+    public void modificarPlato(String nombrePlato, String idRestaurante, int nuevoPrecio, String nuevaDescripcion, Propietario usuarioAutenticado) {
+        if (usuarioAutenticado == null) {
+            throw new IllegalArgumentException("Debe estar autenticado para modificar plato.");
+        }
+        if (!"PROPIETARIO".equalsIgnoreCase(usuarioAutenticado.getRol())) {
+            throw new IllegalArgumentException("Solo el propietario puede modificar platos.");
+        }
+        modificarPlato(nombrePlato, idRestaurante, nuevoPrecio, nuevaDescripcion, usuarioAutenticado.getDocumentoDeIdentidad());
     }
 
     // HU-04: solo precio y descripcion, y solo el dueño del restaurante puede
