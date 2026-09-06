@@ -4,6 +4,9 @@ import repository.PropietarioRepository;
 import repository.RestauranteRepository;
 import service.PropietarioService;
 import service.RestauranteService;
+import model.Plato;
+import repository.PlatoRepository;
+import service.PlatoService;
 
 import java.time.LocalDate;
 
@@ -43,5 +46,54 @@ public class Main {
         restService.crearRestaurante(r1);
         System.out.println(r1);
         System.out.println("Restaurantes guardados: " + restRepo.obtenerTodos().size());
+
+        // --- HU-03: crear plato (requiere restaurante existente y su propietario) ---
+        PlatoRepository platoRepo = new PlatoRepository();
+        PlatoService platoService = new PlatoService(platoRepo, restRepo);
+
+        System.out.println("\n--- Pruebas HU-03 ---");
+
+        Plato platoValido = new Plato(
+                "Bandeja Paisa", 25000, "Plato típico antioqueño",
+                "http://img.com/bandeja.png", "Almuerzo", "900123456"
+        );
+        try {
+            platoService.crearPlato(platoValido, "12345678");
+            System.out.println("Plato creado: " + platoValido);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+
+        Plato platoPrecioInvalido = new Plato(
+                "Sancocho", 0, "Sopa tradicional",
+                "http://img.com/sancocho.png", "Sopa", "900123456"
+        );
+        try {
+            platoService.crearPlato(platoPrecioInvalido, "12345678");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (precio): " + e.getMessage());
+        }
+
+        Plato platoOtroDueno = new Plato(
+                "Mondongo", 18000, "Sopa de mondongo",
+                "http://img.com/mondongo.png", "Sopa", "900123456"
+        );
+        try {
+            platoService.crearPlato(platoOtroDueno, "99999999");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (no es dueño): " + e.getMessage());
+        }
+
+        Plato platoRestauranteInexistente = new Plato(
+                "Ajiaco", 20000, "Sopa bogotana",
+                "http://img.com/ajiaco.png", "Sopa", "000000000"
+        );
+        try {
+            platoService.crearPlato(platoRestauranteInexistente, "12345678");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (restaurante no existe): " + e.getMessage());
+        }
+
+        System.out.println("Platos guardados: " + platoRepo.obtenerTodos().size());
     }
 }

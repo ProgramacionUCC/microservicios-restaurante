@@ -42,17 +42,37 @@ Cuando se quiere guardar un restaurante, el sistema hace validaciones en orden e
 ### Para qué se hace así
 Para que no se creen restaurantes falsos o sin dueño, y para que el dato del teléfono y NIT siempre tenga formato correcto. Además, al validar contra el repositorio de propietarios se asegura la relación entre las dos piezas (Usuarios y Plazoleta) sin acoplarlas.
 
+## Qué hay hecho hasta ahora — HU-03 Crear plato
+
+### Qué hace
+Permite que el propietario de su restaurante cree platos dentro de ese restaurante. Cada plato nace activo y queda asociado al restaurante por su NIT.
+
+### Cómo lo hace
+Cuando se quiere guardar un plato, el sistema hace validaciones en orden en `PlatoService.java:19`:
+
+1. **Revisa que todo esté lleno** — nombre, descripción, urlImagen, categoría e idRestaurante son obligatorios; además el precio debe venir (se valida aparte).
+2. **Revisa el precio** — debe ser un número entero positivo mayor a 0 (`0` o negativo → error).
+3. **Revisa que el restaurante exista** — busca el restaurante por NIT con `RestauranteRepository.java:22` `obtenerPorNit`. Si no existe → error.
+4. **Revisa que sea el dueño** — el `idPropietarioAutenticado` (simula el usuario logueado hasta que exista HU-05) debe coincidir con el `idPropietario` del restaurante en `Restaurante.java:42`. Si no es el dueño → error.
+5. **Lo guarda** — si todo pasa, lo deja en una lista en memoria en `PlatoRepository.java:8` y el plato queda con `activo = true` por defecto en `Plato.java:20`.
+
+### Para qué se hace así
+Para que nadie pueda crear platos en un restaurante que no existe o que no le pertenece, y para que el precio nunca quede en cero o negativo. Al usar el NIT como `idRestaurante` en `Plato.java:10` se mantiene la relación simple entre Plazoleta y Restaurante sin acoplar módulos.
+
 ## Cómo está organizado el código
 
 ```
 src/
-  Main.java                          → ejemplo de uso, crea un propietario y luego un restaurante asociado
+  Main.java                          → ejemplo de uso, crea un propietario, luego un restaurante y prueba crear platos (válido y 3 errores)
   model/Propietario.java             → solo guarda los datos del propietario, no hace validaciones
   model/Restaurante.java             → solo guarda los datos del restaurante (6 campos)
+  model/Plato.java                   → solo guarda los datos del plato (6 campos + activo, nace en true)
   service/PropietarioService.java    → el que revisa, protege y manda a guardar propietarios
   service/RestauranteService.java    → el que revisa y manda a guardar restaurantes
+  service/PlatoService.java          → el que revisa y manda a guardar platos (solo el dueño puede)
   repository/PropietarioRepository.java → el cajón donde se guardan los propietarios
-  repository/RestauranteRepository.java → el cajón donde se guardan los restaurantes
+  repository/RestauranteRepository.java → el cajón donde se guardan los restaurantes (ahora con obtenerPorNit)
+  repository/PlatoRepository.java    → el cajón donde se guardan los platos
   org/mindrot/BCrypt.java            → herramienta que protege las claves
 ```
 
@@ -77,10 +97,19 @@ src/
 - El teléfono máximo 13, solo números y `+` opcional al inicio.
 - El `idPropietario` debe existir en `PropietarioRepository` y tener rol `PROPIETARIO`.
 
+### HU-03 Plato
+- Todos los campos son obligatorios: nombre, precio, descripción, urlImagen, categoría e idRestaurante (NIT).
+- El precio debe ser entero positivo mayor a 0.
+- El `idRestaurante` debe existir en `RestauranteRepository` vía `obtenerPorNit`.
+- Solo el propietario dueño del restaurante (`Restaurante.getIdPropietario() == idPropietarioAutenticado`) puede crear platos en él.
+- Todo plato se crea con `activo = true` por defecto.
+
 ## Estado actual
 
 **HU-01 terminada** en la rama `feature/HU-01-crear-propietario` (pieza de Usuarios). Es la base para lo que sigue.
 
 **HU-02 terminada** en la rama `feature/HU-02-crear-restaurante` (pieza de Plazoleta). Agrega `model/Restaurante.java:1`, `repository/RestauranteRepository.java:1`, `service/RestauranteService.java:17` y ejemplo en `Main.java:11`. No modifica nada de Propietario.
 
-**Qué sigue:** HU-03 Crear plato, y así sucesivamente. Cada historia nueva agregará su parte aquí en este README.
+**HU-03 terminada** en la rama `feature/HU-03-crear-plato` (pieza de Plazoleta). Agrega `model/Plato.java:1`, `repository/PlatoRepository.java:1`, `service/PlatoService.java:19` y corrige `repository/RestauranteRepository.java:22` con `obtenerPorNit` para que `PlatoService` pueda validar existencia y dueño. `Main.java:50` ahora demuestra 1 caso válido y 3 errores esperados (precio inválido, no es dueño, restaurante no existe).
+
+**Qué sigue:** HU-04 y siguientes. Cada historia nueva agregará su parte aquí en este README.
