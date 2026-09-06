@@ -27,12 +27,23 @@ public class PropietarioService {
         this.repository = repository;
     }
 
-    // Metodo principal: hace todo paso a paso
+    // Metodo principal: hace todo paso a paso (sin autenticacion - para bootstrap inicial)
     public void registrarPropietario(Propietario propietario) {
         validarObligatorios(propietario);           // 1. revisa que nada venga vacio
         validarFormato(propietario);                // 2. revisa que email, celular, documento y edad esten bien
         encriptarClave(propietario);                // 3. cambia la clave por una encriptada
         repository.guardarPropietario(propietario); // 4. lo guarda en la lista
+    }
+
+    // Metodo con autenticacion HU-05: solo ADMINISTRADOR puede crear propietarios
+    public void registrarPropietario(Propietario propietario, Propietario usuarioAutenticado) {
+        if (usuarioAutenticado == null) {
+            throw new IllegalArgumentException("Debe estar autenticado para crear propietario.");
+        }
+        if (!"ADMINISTRADOR".equalsIgnoreCase(usuarioAutenticado.getRol())) {
+            throw new IllegalArgumentException("Solo el administrador puede crear propietarios.");
+        }
+        registrarPropietario(propietario);
     }
 
     // Devuelve todos los propietarios guardados

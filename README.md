@@ -80,7 +80,7 @@ Para que nadie pueda cambiar precios de un restaurante que no le pertenece y par
 ## Qué hay hecho hasta ahora — HU-05 Agregar autenticación al sistema
 
 ### Qué hace
-Permite que cualquier usuario (administrador, cliente, propietario o empleado) inicie sesión con correo y clave para acceder solo a lo que le corresponde según su rol.
+Permite que cualquier usuario (administrador, cliente, propietario o empleado) inicie sesión con correo y clave y que cada endpoint solo lo use quien tiene el rol correcto. Es la capa que protege todo lo anterior.
 
 ### Cómo lo hace
 Cuando se quiere iniciar sesión, el sistema hace validaciones en orden en `AutenticacionService.java:17`:
@@ -89,26 +89,36 @@ Cuando se quiere iniciar sesión, el sistema hace validaciones en orden en `Aute
 2. **Busca el usuario por correo** — recorre `PropietarioRepository.java:14` `getPropietarios()`. Si no existe → error “Usuario no encontrado”.
 3. **Valida la contraseña** — compara la clave escrita con la guardada encriptada usando `BCrypt.checkpw`. Si no coincide → error “Contraseña incorrecta”.
 4. **No limita intentos** — cada fallo solo informa, sin bloquear, para que pueda reintentar ilimitadamente.
-5. **Garantiza permisos** — con `tienePermiso(usuario, rolRequerido)` en `AutenticacionService.java:30` verifica que `usuario.getRol()` coincida con el rol necesario para la acción.
+5. **Garantiza permisos** — con `tienePermiso(usuario, rolRequerido)` en `AutenticacionService.java:46` verifica que `usuario.getRol()` coincida con el rol necesario.
+
+Y luego cada endpoint exige estar autenticado en `HU-05`:
+
+* **Crear propietario (solo ADMINISTRADOR)** en `PropietarioService.java:38` `registrarPropietario(prop, admin)` — si `admin` es null o no tiene rol `ADMINISTRADOR` → error. Mantiene sobrecarga sin auth para bootstrap inicial. `Propietario.java:16` ahora permite rol `ADMINISTRADOR` vía constructor `Propietario(..., rol)` y `setRol`.
+* **Crear restaurante (solo ADMINISTRADOR)** en `RestauranteService.java:62` `crearRestaurante(rest, admin)` — valida `ADMINISTRADOR` antes de crear. El método sin auth sigue existiendo para pruebas previas.
+* **Crear empleado (solo PROPIETARIO dueño)** en `EmpleadoService.java:22` `crearEmpleado(empleado, propietario)` — valida que `propietario` tenga rol `PROPIETARIO`, que el restaurante exista vía `RestauranteRepository.java:22` `obtenerPorNit` y que `restaurante.getIdPropietario()` coincida con `propietario.getDocumentoDeIdentidad()`. Valida obligatorios/formato y encripta clave con `BCrypt`.
+* **Crear/modificar plato (solo PROPIETARIO dueño)** en `PlatoService.java:48` `crearPlato(plato, Propietario)` y `PlatoService.java:68` `modificarPlato(..., Propietario)` — validan `PROPIETARIO` y delegan al método legacy con `String` que ya valida dueño. Si no es dueño o no tiene rol → error.
 
 ### Para qué se hace así
-Para que solo usuarios logueados usen el sistema y cada uno vea solo lo de su rol, sin acoplar la lógica de permisos a cada servicio. Al centralizarlo en AutenticacionService se protege el acceso desde un solo lugar.
+Para que no baste con saberse un documento o NIT suelto: ahora se exige el carnet completo del usuario logueado (`Propietario` con `rol` y `documento`). Al centralizar login y `tienePermiso` en `AutenticacionService` se protege cada endpoint desde un solo lugar y se evita que un cliente o admin cree platos/empleados que no le corresponden.
 
 ## Cómo está organizado el código
 
 ```
 src/
-  Main.java                          → ejemplo de uso, crea propietario, restaurante, platos y prueba login con AutenticacionService (HU-05)
-  model/Propietario.java             → solo guarda los datos del propietario, no hace validaciones
+  Main.java                          → ejemplo de uso, crea propietario, restaurante, platos, modifica plato, prueba login y validación por endpoint HU-05
+  model/Propietario.java             → solo guarda datos, ahora con soporte para rol ADMINISTRADOR/PROPIETARIO (constructor con rol y setRol)
   model/Restaurante.java             → solo guarda los datos del restaurante (6 campos)
   model/Plato.java                   → solo guarda los datos del plato (6 campos + activo, nace en true)
-  service/PropietarioService.java    → el que revisa, protege y manda a guardar propietarios
-  service/RestauranteService.java    → el que revisa y manda a guardar restaurantes
-  service/PlatoService.java          → el que revisa y manda a guardar/modificar platos (solo el dueño puede)
-  service/AutenticacionService.java  → el que deja entrar con correo y clave y revisa permisos por rol (HU-05)
-  repository/PropietarioRepository.java → el cajón donde se guardan los propietarios
-  repository/RestauranteRepository.java → el cajón donde se guardan los restaurantes (ahora con obtenerPorNit)
-  repository/PlatoRepository.java    → el cajón donde se guardan los platos
+  model/Empleado.java                → solo guarda datos del empleado (8 campos, rol EMPLEADO, idRestaurante)
+  service/PropietarioService.java    → revisa y guarda propietarios, ahora con sobrecarga que exige ADMINISTRADOR
+  service/RestauranteService.java    → revisa y guarda restaurantes, ahora con sobrecarga que exige ADMINISTRADOR
+  service/PlatoService.java          → revisa y guarda/modifica platos, ahora con sobrecarga que exige PROPIETARIO dueño (Propietario autenticado)
+  service/EmpleadoService.java       → revisa y guarda empleados, solo PROPIETARIO dueño del restaurante puede
+  service/AutenticacionService.java  → deja entrar con correo/clave, valida BCrypt, intentos ilimitados y tienePermiso por rol (HU-05)
+  repository/PropietarioRepository.java → cajón de propietarios
+  repository/RestauranteRepository.java → cajón de restaurantes (con obtenerPorNit)
+  repository/PlatoRepository.java    → cajón de platos
+  repository/EmpleadoRepository.java → cajón de empleados
   org/mindrot/BCrypt.java            → herramienta que protege las claves
 ```
 
@@ -148,10 +158,14 @@ src/
 - No se permiten modificar platos de otros restaurantes diferentes al propio.
 
 ### HU-05 Autenticación
-- Inicio de sesión con **correo y clave**.
+- Inicio de sesión con **correo y clave** en `AutenticacionService.java:19`.
 - Valida que el usuario exista y que la contraseña sea correcta (compara con `BCrypt.checkpw`).
 - Número de intentos ilimitado (no bloquea, solo informa error cada vez).
-- Una vez logueado, se garantiza que cada usuario solo puede hacer lo de su rol vía `tienePermiso(usuario, rolRequerido)` en `AutenticacionService.java:30`.
+- `tienePermiso(usuario, rol)` en `AutenticacionService.java:46` centraliza la verificación por rol.
+- **Crear propietario** solo `ADMINISTRADOR` en `PropietarioService.java:38`.
+- **Crear restaurante** solo `ADMINISTRADOR` en `RestauranteService.java:62`.
+- **Crear empleado** solo `PROPIETARIO` dueño del restaurante en `EmpleadoService.java:22` (valida restaurante existe y dueño, encripta clave).
+- **Crear/modificar plato** solo `PROPIETARIO` dueño en `PlatoService.java:48` y `68` (sobrecarga con `Propietario` autenticado).
 
 ## Estado actual
 
@@ -163,6 +177,6 @@ src/
 
 **HU-04 terminada** en la rama `feature/HU-04-Modificar-plato` (pieza de Plazoleta). Agrega `Plato.java:50` `setPrecio/setDescripcion` y `PlatoService.java:50` `modificarPlato()` con 6 validaciones (vacíos, precio>0, restaurante existe, es dueño, plato existe, solo precio+desc). `Main.java:99` ahora demuestra 1 caso válido y 2 errores esperados (no es dueño, precio inválido). No toca ningún repository.
 
-**HU-05 terminada** en la rama `feature/HU-05-agregar-autenticación-al-sistema` (pieza de Usuarios). Agrega `service/AutenticacionService.java:1` con `iniciarSesion(correo, clave)` (valida vacíos, busca por correo, compara `BCrypt.checkpw`, intentos ilimitados) y `tienePermiso(usuario, rol)`. `Main.java:127` ahora demuestra login OK, clave incorrecta, usuario no encontrado e intento ilimitado y permisos por rol.
+**HU-05 terminada** en la rama `feature/HU-05-agregar-autenticación-al-sistema` (pieza de Usuarios). Agrega `service/AutenticacionService.java:1` con `iniciarSesion(correo, clave)` y `tienePermiso`, ahora completa con validación por endpoint: `Propietario.java:16` soporta `ADMINISTRADOR`, `model/Empleado.java:1` + `repository/EmpleadoRepository.java:1` + `service/EmpleadoService.java:22` (solo propietario dueño), `PropietarioService.java:38` y `RestauranteService.java:62` exigen `ADMINISTRADOR`, `PlatoService.java:48`/`68` exigen `PROPIETARIO` dueño con objeto autenticado. `Main.java:127` demuestra login, intentos ilimitados y 4 bloques de validación por endpoint (propietario/restaurante/empleado/plato) con casos OK y errores esperados.
 
 **Qué sigue:** HU-06 y siguientes. Cada historia nueva agregará su parte aquí en este README.
