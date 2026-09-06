@@ -95,5 +95,32 @@ public class Main {
         }
 
         System.out.println("Platos guardados: " + platoRepo.obtenerTodos().size());
+
+        // --- HU-04: modificar plato (solo precio y descripcion, solo dueño) ---
+        System.out.println("\n--- Pruebas HU-04 ---");
+
+        // caso valido: cambia precio y descripcion
+        try {
+            platoService.modificarPlato("Bandeja Paisa", "900123456", 28000, "Bandeja actualizada con aguacate", "12345678");
+            System.out.println("Plato modificado: " + platoValido);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+
+        // error: intenta modificar plato de otro restaurante (no es dueño)
+        try {
+            platoService.modificarPlato("Bandeja Paisa", "900123456", 30000, "Intento otro dueño", "99999999");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (no es dueño HU-04): " + e.getMessage());
+        }
+
+        // error: precio invalido
+        try {
+            platoService.modificarPlato("Bandeja Paisa", "900123456", 0, "Precio malo", "12345678");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (precio HU-04): " + e.getMessage());
+        }
+
+        System.out.println("Plato final: " + platoValido);
     }
 }
