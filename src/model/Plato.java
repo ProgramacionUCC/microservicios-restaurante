@@ -48,6 +48,15 @@ public class Plato {
         return activo;
     }
 
+    // Solo se pueden cambiar precio y descripcion (HU-04)
+    public void setPrecio(int precio) {
+        this.precio = precio;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
     @Override
     public String toString() {
         return "Plato{" +

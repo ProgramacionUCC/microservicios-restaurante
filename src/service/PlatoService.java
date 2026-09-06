@@ -43,6 +43,38 @@ public class PlatoService {
         platoRepository.guardar(plato);
     }
 
+    // HU-04: solo precio y descripcion, y solo el dueño del restaurante puede
+    public void modificarPlato(String nombrePlato, String idRestaurante, int nuevoPrecio, String nuevaDescripcion, String idPropietarioAutenticado) {
+        // revisa que nada venga vacio
+        if (esNuloOVacio(nombrePlato) || esNuloOVacio(idRestaurante) || esNuloOVacio(nuevaDescripcion) || esNuloOVacio(idPropietarioAutenticado)) {
+            throw new IllegalArgumentException("Nombre del plato, idRestaurante, descripcion y propietario son obligatorios.");
+        }
+        // precio debe ser mayor a 0
+        if (nuevoPrecio <= 0) {
+            throw new IllegalArgumentException("El precio del plato debe ser un número entero positivo mayor a 0.");
+        }
+        // el restaurante debe existir
+        Restaurante restaurante = restauranteRepository.obtenerPorNit(idRestaurante);
+        if (restaurante == null) {
+            throw new IllegalArgumentException("El restaurante indicado no existe.");
+        }
+        // solo el dueño puede modificar
+        if (!restaurante.getIdPropietario().equals(idPropietarioAutenticado)) {
+            throw new IllegalArgumentException("Solo el propietario del restaurante puede modificar sus platos.");
+        }
+        // buscar el plato por nombre y restaurante
+        Plato plato = platoRepository.obtenerTodos().stream()
+                .filter(p -> p.getNombre().equalsIgnoreCase(nombrePlato) && p.getIdRestaurante().equalsIgnoreCase(idRestaurante))
+                .findFirst()
+                .orElse(null);
+        if (plato == null) {
+            throw new IllegalArgumentException("El plato indicado no existe en ese restaurante.");
+        }
+        // solo se cambia precio y descripcion
+        plato.setPrecio(nuevoPrecio);
+        plato.setDescripcion(nuevaDescripcion);
+    }
+
     private boolean esNuloOVacio(String valor) {
         return valor == null || valor.trim().isEmpty();
     }
