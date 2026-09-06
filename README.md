@@ -77,17 +77,35 @@ Cuando se quiere modificar un plato, el sistema hace validaciones en orden en `P
 ### Para qué se hace así
 Para que nadie pueda cambiar precios de un restaurante que no le pertenece y para que no se puedan modificar otros campos por error. Al cambiar solo dos setters se respeta el checklist del Trello y se mantiene la regla de negocio simple y segura.
 
+## Qué hay hecho hasta ahora — HU-05 Agregar autenticación al sistema
+
+### Qué hace
+Permite que cualquier usuario (administrador, cliente, propietario o empleado) inicie sesión con correo y clave para acceder solo a lo que le corresponde según su rol.
+
+### Cómo lo hace
+Cuando se quiere iniciar sesión, el sistema hace validaciones en orden en `AutenticacionService.java:17`:
+
+1. **Revisa que correo y clave no vengan vacíos** — ambos son obligatorios.
+2. **Busca el usuario por correo** — recorre `PropietarioRepository.java:14` `getPropietarios()`. Si no existe → error “Usuario no encontrado”.
+3. **Valida la contraseña** — compara la clave escrita con la guardada encriptada usando `BCrypt.checkpw`. Si no coincide → error “Contraseña incorrecta”.
+4. **No limita intentos** — cada fallo solo informa, sin bloquear, para que pueda reintentar ilimitadamente.
+5. **Garantiza permisos** — con `tienePermiso(usuario, rolRequerido)` en `AutenticacionService.java:30` verifica que `usuario.getRol()` coincida con el rol necesario para la acción.
+
+### Para qué se hace así
+Para que solo usuarios logueados usen el sistema y cada uno vea solo lo de su rol, sin acoplar la lógica de permisos a cada servicio. Al centralizarlo en AutenticacionService se protege el acceso desde un solo lugar.
+
 ## Cómo está organizado el código
 
 ```
 src/
-  Main.java                          → ejemplo de uso, crea un propietario, luego un restaurante y prueba crear platos (válido y 3 errores)
+  Main.java                          → ejemplo de uso, crea propietario, restaurante, platos y prueba login con AutenticacionService (HU-05)
   model/Propietario.java             → solo guarda los datos del propietario, no hace validaciones
   model/Restaurante.java             → solo guarda los datos del restaurante (6 campos)
   model/Plato.java                   → solo guarda los datos del plato (6 campos + activo, nace en true)
   service/PropietarioService.java    → el que revisa, protege y manda a guardar propietarios
   service/RestauranteService.java    → el que revisa y manda a guardar restaurantes
-  service/PlatoService.java          → el que revisa y manda a guardar platos (solo el dueño puede)
+  service/PlatoService.java          → el que revisa y manda a guardar/modificar platos (solo el dueño puede)
+  service/AutenticacionService.java  → el que deja entrar con correo y clave y revisa permisos por rol (HU-05)
   repository/PropietarioRepository.java → el cajón donde se guardan los propietarios
   repository/RestauranteRepository.java → el cajón donde se guardan los restaurantes (ahora con obtenerPorNit)
   repository/PlatoRepository.java    → el cajón donde se guardan los platos
@@ -129,6 +147,12 @@ src/
 - Solo el propietario dueño del restaurante puede modificarlo (`Restaurante.getIdPropietario() == idPropietarioAutenticado`).
 - No se permiten modificar platos de otros restaurantes diferentes al propio.
 
+### HU-05 Autenticación
+- Inicio de sesión con **correo y clave**.
+- Valida que el usuario exista y que la contraseña sea correcta (compara con `BCrypt.checkpw`).
+- Número de intentos ilimitado (no bloquea, solo informa error cada vez).
+- Una vez logueado, se garantiza que cada usuario solo puede hacer lo de su rol vía `tienePermiso(usuario, rolRequerido)` en `AutenticacionService.java:30`.
+
 ## Estado actual
 
 **HU-01 terminada** en la rama `feature/HU-01-crear-propietario` (pieza de Usuarios). Es la base para lo que sigue.
@@ -139,4 +163,6 @@ src/
 
 **HU-04 terminada** en la rama `feature/HU-04-Modificar-plato` (pieza de Plazoleta). Agrega `Plato.java:50` `setPrecio/setDescripcion` y `PlatoService.java:50` `modificarPlato()` con 6 validaciones (vacíos, precio>0, restaurante existe, es dueño, plato existe, solo precio+desc). `Main.java:99` ahora demuestra 1 caso válido y 2 errores esperados (no es dueño, precio inválido). No toca ningún repository.
 
-**Qué sigue:** HU-05 y siguientes. Cada historia nueva agregará su parte aquí en este README.
+**HU-05 terminada** en la rama `feature/HU-05-agregar-autenticación-al-sistema` (pieza de Usuarios). Agrega `service/AutenticacionService.java:1` con `iniciarSesion(correo, clave)` (valida vacíos, busca por correo, compara `BCrypt.checkpw`, intentos ilimitados) y `tienePermiso(usuario, rol)`. `Main.java:127` ahora demuestra login OK, clave incorrecta, usuario no encontrado e intento ilimitado y permisos por rol.
+
+**Qué sigue:** HU-06 y siguientes. Cada historia nueva agregará su parte aquí en este README.
