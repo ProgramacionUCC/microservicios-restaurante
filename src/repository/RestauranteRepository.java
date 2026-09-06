@@ -19,4 +19,10 @@ public class RestauranteRepository {
         return restaurantes.stream()
                 .anyMatch(r -> r.getNit().equalsIgnoreCase(nit));
     }
+    public Restaurante obtenerPorNit(String nit) {
+        return restaurantes.stream()
+                .filter(r -> r.getNit().equalsIgnoreCase(nit))
+                .findFirst()
+                .orElse(null);
+    }
 }
