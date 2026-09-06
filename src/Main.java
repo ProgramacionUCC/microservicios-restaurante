@@ -7,6 +7,7 @@ import service.RestauranteService;
 import model.Plato;
 import repository.PlatoRepository;
 import service.PlatoService;
+import service.AutenticacionService;
 
 import java.time.LocalDate;
 
@@ -122,5 +123,40 @@ public class Main {
         }
 
         System.out.println("Plato final: " + platoValido);
+
+        // --- HU-05: autenticacion (correo y clave, intentos ilimitados, permisos por rol) ---
+        System.out.println("\n--- Pruebas HU-05 ---");
+        AutenticacionService authService = new AutenticacionService(propRepo);
+
+        // login correcto
+        try {
+            Propietario logueado = authService.iniciarSesion("carlos@mail.com", "abc123");
+            System.out.println("Login OK: " + logueado.getCorreo() + " rol=" + logueado.getRol());
+            System.out.println("Tiene permiso PROPIETARIO? " + authService.tienePermiso(logueado, "PROPIETARIO"));
+            System.out.println("Tiene permiso CLIENTE? " + authService.tienePermiso(logueado, "CLIENTE"));
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+
+        // clave incorrecta
+        try {
+            authService.iniciarSesion("carlos@mail.com", "claveMala");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (clave): " + e.getMessage());
+        }
+
+        // correo no existe
+        try {
+            authService.iniciarSesion("noexiste@mail.com", "abc123");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (usuario): " + e.getMessage());
+        }
+
+        // intentos ilimitados: puede volver a intentar sin bloqueo
+        try {
+            authService.iniciarSesion("carlos@mail.com", "otraMala");
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error esperado (intento ilimitado): " + e.getMessage());
+        }
     }
 }
